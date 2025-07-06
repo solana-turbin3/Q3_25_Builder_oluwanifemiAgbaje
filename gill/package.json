@@ -1,0 +1,24 @@
+{
+  "name": "gill",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "create_token": "ts-node ./create_token.ts",
+    "mint_token": "ts-node ./mint_token.ts",
+    "transfer_token": "ts-node ./transfer_token.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^24.0.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "gill": "^0.10.2"
+  }
+}
