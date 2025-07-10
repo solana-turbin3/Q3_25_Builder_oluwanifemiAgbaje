@@ -6,6 +6,9 @@ describe("vault", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
+  
+  const user = provider.wallet.payer;
+  console.log(user.publicKey.toBase58()) 
 
   const program = anchor.workspace.vault as Program<Vault>;
 
