@@ -32,6 +32,7 @@ pub struct Initialize<'info>{
     pub signer: Signer<'info>,
     
     #[account(
+        mut,
         seeds = [b"vault", vault_state.key().as_ref()],
         bump,
     )]
@@ -40,9 +41,9 @@ pub struct Initialize<'info>{
     #[account(
         init,
         payer = signer,
-        seeds = [b"state", signer.key().as_ref()], //
+        seeds = [b"state", signer.key().as_ref()], // signer pubkey as reference
         bump,
-        space = 8 + VaultState::INIT_SPACE
+        space = 8 + VaultState::INIT_SPACE // 8 -> anchor disriminator
     )]
     pub vault_state: Account<'info, VaultState>,
 
