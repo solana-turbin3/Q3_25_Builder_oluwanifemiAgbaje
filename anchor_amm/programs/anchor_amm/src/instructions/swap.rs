@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{ transfer, Mint, Token, TokenAccount, Transfer}};
-// use constant_product_curve::ConstantProduct;
+use constant_product_curve::{ConstantProduct, LiquidityPair};
 
 use crate::{error::AmmError, Config};
 
@@ -65,88 +65,47 @@ impl<'info> Swap<'info> {
         require!(amount_in > 0, AmmError::InvalidAmount);
         require!(self.vault_x.amount > 0 && self.vault_y.amount > 0, AmmError::NoLiquidityInPool);
 
-        // Calculate swap amounts
-        let (amount_out, fee_amount) = self.calculate_swap_amounts(swap_x, amount_in)?;
+        let mut curve = ConstantProduct::init(
+            self.vault_x.amount, 
+            self.vault_y.amount, 
+            self.vault_x.amount, 
+            self.config.fee, 
+           None
+        ).map_err(AmmError::from)?;
+
+        let p = match swap_x {
+            true => LiquidityPair::X,
+            false => LiquidityPair::Y
+        };
+
+   let res = curve.swap(p, amount_in, min_amount_out).map_err(AmmError::from)?;
+
+        require!(res.deposit != 0, AmmError::InvalidAmount);
+        require!(res.withdraw != 0, AmmError::InvalidAmount);
 
         // Slippage protection
-        require!(amount_out >= min_amount_out, AmmError::SlippageExceeded);
+        require!(res.withdraw >= min_amount_out, AmmError::SlippageExceeded);
 
         // Perform the swap
-        if swap_x {
-            // Swap X for Y: User gives X tokens, receives Y tokens
-            self.transfer_tokens_to_vault(true, amount_in)?;     // User → Vault (X tokens)
-            self.transfer_tokens_to_user(false, amount_out)?;    // Vault → User (Y tokens)
-        } else {
-            // Swap Y for X: User gives Y tokens, receives X tokens
-            self.transfer_tokens_to_vault(false, amount_in)?;    // User → Vault (Y tokens)
-            self.transfer_tokens_to_user(true, amount_out)?;     // Vault → User (X tokens)
-        }
+        self.transfer_tokens_to_vault(swap_x, res.deposit)?;
+        self.transfer_tokens_to_user(swap_x, res.withdraw)?;
+
+
+        //transfer fee
+        self.transfer_fee_to_lps(swap_x, res.fee)?;
 
         // Emit event for tracking
         emit!(SwapEvent {
             user: self.user.key(),
             swap_x,
             amount_in,
-            amount_out,
-            fee_amount,
+            min_amount_out,
+            fee_amount: res.fee,
         });
-
         Ok(())
+
     }
 
-    fn calculate_swap_amounts(&self, swap_x: bool, amount_in: u64) -> Result<(u64, u64)> {
-        // Get current pool reserves
-        let (reserve_in, reserve_out) = if swap_x {
-            (self.vault_x.amount, self.vault_y.amount)
-        } else {
-            (self.vault_y.amount, self.vault_x.amount)
-        };
-
-        // Ensure we have enough liquidity
-        require!(reserve_in > 0 && reserve_out > 0, AmmError::InsufficientBalance);
-
-        // Calculate fee (e.g., 0.3% = 30 basis points)
-        let fee_amount = (amount_in as u128)
-            .checked_mul(self.config.fee as u128)
-            .ok_or(AmmError::Overflow)?
-            .checked_div(10000)  // Fee is in basis points (0.3% = 30/10000)
-            .ok_or(AmmError::Overflow)? as u64;
-
-        // Amount after fee
-        let amount_in_after_fee = amount_in
-            .checked_sub(fee_amount)
-            .ok_or(AmmError::Overflow)?;
-
-        // Constant Product Formula: x * y = k
-        // When adding amount_in_after_fee to reserve_in, we need to calculate new reserve_out
-        // such that: (reserve_in + amount_in_after_fee) * new_reserve_out = reserve_in * reserve_out
-        // Therefore: new_reserve_out = (reserve_in * reserve_out) / (reserve_in + amount_in_after_fee)
-        // Amount out = reserve_out - new_reserve_out
-
-        let new_reserve_in = (reserve_in as u128)
-            .checked_add(amount_in_after_fee as u128)
-            .ok_or(AmmError::Overflow)?;
-
-        let k = (reserve_in as u128)
-            .checked_mul(reserve_out as u128)
-            .ok_or(AmmError::Overflow)?;
-
-        let new_reserve_out = k
-            .checked_div(new_reserve_in)
-            .ok_or(AmmError::DivisionByZero)?;
-
-        let amount_out = (reserve_out as u128)
-            .checked_sub(new_reserve_out)
-            .ok_or(AmmError::InsufficientBalance)?
-            .try_into()
-            .map_err(|_| AmmError::Overflow)?;
-
-        // Ensure we don't drain the pool
-        require!(amount_out < reserve_out, AmmError::InsufficientBalance);
-        require!(amount_out > 0, AmmError::InvalidAmount);
-
-        Ok((amount_out, fee_amount))
-    }
 
     // user deposit amount he wants to swap
     fn transfer_tokens_to_vault(&self, is_x: bool, amount: u64) -> Result<()> {
@@ -192,6 +151,30 @@ impl<'info> Swap<'info> {
         let ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
         transfer(ctx, amount)
     }
+
+     pub fn transfer_fee_to_lps(&self, swap_x: bool, amount: u64) -> Result<()> {
+
+        let ( from, to ) = match swap_x {
+            true => (
+                self.user_x.to_account_info(),
+                self.vault_x.to_account_info()
+            ),
+            false => (
+                self.user_y.to_account_info(),
+                self.vault_y.to_account_info()
+            )
+        };
+
+        let cpi_accounts = Transfer {
+            from: from.to_account_info(),
+            to: to.to_account_info(),
+            authority: self.user.to_account_info()
+        };
+
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+
+        transfer(cpi_ctx, amount)
+    }
 }
 
 // Event for tracking swaps
@@ -200,6 +183,6 @@ pub struct SwapEvent {
     pub user: Pubkey,
     pub swap_x: bool,
     pub amount_in: u64,
-    pub amount_out: u64,
+    pub min_amount_out: u64,
     pub fee_amount: u64,
 }
