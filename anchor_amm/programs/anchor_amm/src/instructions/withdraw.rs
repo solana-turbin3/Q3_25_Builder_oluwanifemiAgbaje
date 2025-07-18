@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer}};
-// use constant_product_curve::ConstantProduct;
+use constant_product_curve::ConstantProduct;
 
 use crate::{error::AmmError, Config};
 
@@ -76,37 +76,21 @@ impl<'info> Withdraw<'info> {
          require!(amount <= self.user_lp.amount, AmmError::InvalidAmount);
         require!(self.mint_lp.supply > 0, AmmError::NoLiquidityInPool);
 
-        let (x, y) = self.calculate_withdraw_amounts(amount)?;
+        let amounts = ConstantProduct::xy_withdraw_amounts_from_l(
+                    self.vault_x.amount, 
+                    self.vault_y.amount, 
+                    self.mint_lp.supply, 
+                    amount, 
+                6).unwrap();
 
-        require!(x >= min_x && y >= min_y, AmmError::SlippageExceeded);
 
-        self.transfer_tokens_to_lp( true, x)?;
-        self.transfer_tokens_to_lp(false, y)?;
+        require!(min_x <= amounts.x && min_y <= amounts.y, AmmError::SlippageExceeded);
+
+        self.transfer_tokens_to_lp( true, amounts.x)?;
+        self.transfer_tokens_to_lp(false, amounts.y)?;
 
         self.burn_lp_token(amount)
 
-    }
-    fn calculate_withdraw_amounts(&self, amount: u64) -> Result<(u64, u64)> {
-        // Calculate proportional amounts based on LP token ownership
-        // Formula: (vault_amount * lp_amount) / total_lp_supply
-        
-        let x_amount = (self.vault_x.amount as u128)
-            .checked_mul(amount as u128) //// multiplication overflow
-            .ok_or(AmmError::Overflow)?
-            .checked_div(self.mint_lp.supply as u128) // division overflow
-            .ok_or(AmmError::Overflow)? as u64;
-
-        let y_amount = (self.vault_y.amount as u128)
-            .checked_mul(amount as u128) // multiplication overflow
-            .ok_or(AmmError::Overflow)?
-            .checked_div(self.mint_lp.supply as u128) // division overflow
-            .ok_or(AmmError::Overflow)? as u64;
-
-        // Ensure we're not trying to withdraw more than what's in the vaults
-        require!(x_amount <= self.vault_x.amount, AmmError::InsufficientBalance);
-        require!(y_amount <= self.vault_y.amount, AmmError::InsufficientBalance);
-
-        Ok((x_amount, y_amount))
     }
 
     pub fn transfer_tokens_to_lp(&self, is_x: bool, amount: u64, ) -> Result<()>{
