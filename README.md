@@ -1,5 +1,8 @@
 # Turbin3_PoW
 # Turbin3 Q3 Builders Cohort - Proof of Work
+![turbin3](https://github.com/user-attachments/assets/02834dfc-7464-41ea-8cd2-10ccb5fa419c)
+
+
 
 Welcome to my Turbin3 Q3 Builders cohort repository! This repository contains my proof of work and learning journey through the Solana development program.
 
