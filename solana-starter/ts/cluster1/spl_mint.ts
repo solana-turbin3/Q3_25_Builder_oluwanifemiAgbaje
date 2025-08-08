@@ -1,6 +1,6 @@
 import { Keypair, PublicKey, Connection, Commitment } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
-import wallet from "../wallet.json"
+import wallet from "../pwallet.json"
 import { get } from "prompt";
 
 // Import our keypair from the wallet file
@@ -13,7 +13,7 @@ const connection = new Connection("https://api.devnet.solana.com", commitment);
 const token_decimals = 1_000_000n;
 
 // Mint address
-const mint = new PublicKey("uaYZpnEJ7ng66PkG7ENWYHPHoQbzHBr3G7jb7gUhS58");
+const mint = new PublicKey("5Fj4vZRfxzyfr8Win4T7BUSqKNbZJ9yi2wS7YKNwJyeu");
 
 (async () => {
     try {
@@ -22,7 +22,7 @@ const mint = new PublicKey("uaYZpnEJ7ng66PkG7ENWYHPHoQbzHBr3G7jb7gUhS58");
         console.log(`Your ATA is: ${ata.address.toBase58()}`);
 
         // Mint to ATA
-        const mintTx = await mintTo(connection, keypair, mint, ata.address, keypair.publicKey, 10000n*token_decimals);
+        const mintTx = await mintTo(connection, keypair, mint, ata.address, keypair.publicKey, 100000n*token_decimals);
         console.log(`Your mint txid: ${mintTx}`);
     } catch(error) {
         console.log(`Oops, something went wrong: ${error}`)

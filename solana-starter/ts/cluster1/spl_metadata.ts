@@ -1,4 +1,4 @@
-import wallet from "../wallet.json"
+import wallet from "../pwallet.json"
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
 import { 
     createMetadataAccountV3, 
@@ -10,7 +10,7 @@ import { createSignerFromKeypair, signerIdentity, publicKey } from "@metaplex-fo
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
 // Define our Mint address
-const mint = publicKey("uaYZpnEJ7ng66PkG7ENWYHPHoQbzHBr3G7jb7gUhS58")
+const mint = publicKey("5Fj4vZRfxzyfr8Win4T7BUSqKNbZJ9yi2wS7YKNwJyeu")
 
 // Create a UMI connection
 const umi = createUmi('https://api.devnet.solana.com');
@@ -27,8 +27,8 @@ umi.use(signerIdentity(createSignerFromKeypair(umi, keypair)));
         }
 
         let data: DataV2Args = {
-            name: "Vhagar Token",
-            symbol: "VHG",
+            name: "USDT Test",
+            symbol: "TUSD",
             uri: "https://res.cloudinary.com/dpr7stzp5/image/upload/v1751445694/Vhagar_xppfpn.webp",
             sellerFeeBasisPoints: 50, 
             creators: null, 
