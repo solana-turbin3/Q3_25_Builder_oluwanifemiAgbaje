@@ -30,6 +30,7 @@ pub struct Refund<'info> {
     pub escrow: Account<'info, Escrow>,
 
     #[account(
+        mut,
         associated_token::mint= mint_a,
         associated_token::authority = escrow,
         associated_token::token_program = token_program
@@ -44,12 +45,15 @@ pub struct Refund<'info> {
 impl<'info> Refund<'info>  {
     pub fn refund_and_close(&mut self) -> Result<()>{
 
-        let signer_seeds: [&[&[u8]]; 1] = [&[
+        
+        let seeds = &[
             b"escrow",
             self.maker.to_account_info().key.as_ref(),
             &self.escrow.seed.to_le_bytes()[..],
-            &[self.escrow.bump]
-        ]];
+            &[self.escrow.bump],
+        ];
+
+        let signer_seeds = &[&seeds[..]];
 
         let transfer_accounts = TransferChecked{
             from: self.vault.to_account_info(),
@@ -58,7 +62,7 @@ impl<'info> Refund<'info>  {
             authority: self.escrow.to_account_info()
         };
 
-        let cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), transfer_accounts, &signer_seeds);
+        let cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), transfer_accounts, signer_seeds);
 
         transfer_checked(cpi_ctx, self.vault.amount, self.mint_a.decimals)?;
 
@@ -68,7 +72,7 @@ impl<'info> Refund<'info>  {
             authority: self.escrow.to_account_info(),
         };
 
-        let close_cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), close_accounts, &signer_seeds);
+        let close_cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), close_accounts, signer_seeds);
         
         close_account(close_cpi_ctx)?;
 

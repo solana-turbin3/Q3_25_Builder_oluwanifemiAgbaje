@@ -4,7 +4,6 @@ use anchor_spl::{associated_token::AssociatedToken, token_interface::{transfer_c
 use crate::state::Escrow;
 
 #[derive(Accounts)]
-#[instruction(seed: u64)] //passing the seed so maker can create mutiple escrows
 pub struct Take<'info> {
     #[account(mut)]
     pub taker: Signer <'info>,
@@ -37,7 +36,8 @@ pub struct Take<'info> {
     pub taker_ata_b: InterfaceAccount<'info, TokenAccount>, //we need an ata for the taker token
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = taker,
         associated_token::mint= mint_b,
         associated_token::authority = maker,
         associated_token::token_program = token_program
@@ -55,8 +55,7 @@ pub struct Take<'info> {
     pub escrow: Account<'info, Escrow>,
 
     #[account(
-        init,
-        payer = maker,
+        mut,
         associated_token::mint= mint_a,
         associated_token::authority = escrow,
         associated_token::token_program = token_program
@@ -76,7 +75,7 @@ impl<'info> Take<'info> {
             authority: self.taker.to_account_info()
         };
 
-        let cpi_ctx = CpiContext::new(self.system_program.to_account_info(), transfer_accounts);
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), transfer_accounts);
 
         transfer_checked(cpi_ctx, self.escrow.receive, self.mint_b.decimals)?;
         Ok(())
@@ -85,12 +84,14 @@ impl<'info> Take<'info> {
 
     pub fn withdraw_and_close_vault(&mut self) -> Result<()>{
 
-        let signer_seeds: [&[&[u8]]; 1] = [&[
+        let seeds = &[
             b"escrow",
             self.maker.to_account_info().key.as_ref(),
             &self.escrow.seed.to_le_bytes()[..],
-            &[self.escrow.bump]
-        ]];
+            &[self.escrow.bump],
+        ];
+
+        let signer_seeds = &[&seeds[..]];
 
         let transfer_accounts = TransferChecked{
             from: self.vault.to_account_info(),
@@ -99,7 +100,7 @@ impl<'info> Take<'info> {
             authority: self.escrow.to_account_info()
         };
 
-        let cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), transfer_accounts, &signer_seeds);
+        let cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), transfer_accounts, signer_seeds);
 
         transfer_checked(cpi_ctx, self.vault.amount, self.mint_a.decimals)?;
 
@@ -109,11 +110,10 @@ impl<'info> Take<'info> {
             authority: self.escrow.to_account_info(),
         };
 
-        let close_cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), close_accounts, &signer_seeds);
+        let close_cpi_ctx= CpiContext::new_with_signer(self.token_program.to_account_info(), close_accounts, signer_seeds);
         
         close_account(close_cpi_ctx)?;
 
-            Ok(())
-        }
+        Ok(())
+    }
 }
-
