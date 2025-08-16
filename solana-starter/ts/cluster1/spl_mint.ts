@@ -22,7 +22,7 @@ const mint = new PublicKey("5Fj4vZRfxzyfr8Win4T7BUSqKNbZJ9yi2wS7YKNwJyeu");
         console.log(`Your ATA is: ${ata.address.toBase58()}`);
 
         // Mint to ATA
-        const mintTx = await mintTo(connection, keypair, mint, ata.address, keypair.publicKey, 100000n*token_decimals);
+        const mintTx = await mintTo(connection, keypair, mint, ata.address, keypair.publicKey, 500_000_000n*token_decimals);
         console.log(`Your mint txid: ${mintTx}`);
     } catch(error) {
         console.log(`Oops, something went wrong: ${error}`)

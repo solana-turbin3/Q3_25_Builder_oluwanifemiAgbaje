@@ -11,10 +11,10 @@ const commitment: Commitment = "confirmed";
 const connection = new Connection("https://api.devnet.solana.com", commitment);
 
 // Mint address
-const mint = new PublicKey("uaYZpnEJ7ng66PkG7ENWYHPHoQbzHBr3G7jb7gUhS58");
+const mint = new PublicKey("5Fj4vZRfxzyfr8Win4T7BUSqKNbZJ9yi2wS7YKNwJyeu");
 
 // Recipient address
-const to = new PublicKey("9kVoR3eBvy2D7marMPcyZkUv15zLZrKhxkvJcr9ddMmq");
+const to = new PublicKey("5FaER8yXfEujMT7Q7N7BZ8hDdMgh15Vow7LgQpAeiTTy");
 
 (async () => {
     try {
@@ -41,7 +41,7 @@ const to = new PublicKey("9kVoR3eBvy2D7marMPcyZkUv15zLZrKhxkvJcr9ddMmq");
             fromWallet.address,
             toWallet.address,
             keypair.publicKey,
-            2_000_000_0n,
+            20_000_000_0n,
         );
 
         console.log(`Your signature: ${tx}`);
