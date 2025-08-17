@@ -253,16 +253,10 @@ This is a capstone project for Turbin3, feedback and suggestions are welcome!
 4. Add tests for new functionality
 5. Submit a pull request
 
-## 📄 License
-
-This project is part of the Turbin3 program and is for educational purposes.
 
 ## 🙏 Acknowledgments
 
 - **Turbin3**: For providing an excellent Solana development program
-- **Anchor Team**: For the amazing development framework
-- **Solana Labs**: For building an incredible blockchain platform
-- **Community**: For continuous support and feedback
 
 ## 📞 Contact
 
